@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Form Submission</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      .form-container {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 300px;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+      }
+
+      label {
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+
+      input,
+      textarea,
+      button {
+        margin-bottom: 15px;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+      }
+
+      button {
+        background-color: #28a745;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="form-container">
+      <form id="dataForm" enctype="multipart/form-data">
+        <label for="unique_id">Unique ID</label>
+        <input
+          type="text"
+          id="unique_id"
+          name="unique_id"
+          value="b5f076f6f60f590abe0c85f5c0dd19ab"
+          readonly
+        />
+
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" value="INQUIRY | " />
+
+        <label for="description">Description</label>
+        <textarea id="description" name="description"></textarea>
+
+        <label for="group_id">Group ID</label>
+        <input
+          type="text"
+          id="group_id"
+          name="group_id"
+          value="10101010"
+          readonly
+        />
+
+        <label for="file">Upload Photo</label>
+        <input type="file" id="file" name="file" accept="image/*" />
+
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+
+    <script>
+      document
+        .getElementById("dataForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const formData = new FormData(this);
+
+          // Melihat isi formData
+          formData.forEach((value, key) => {
+            if (value instanceof File) {
+              const reader = new FileReader();
+
+              reader.onload = function (event) {
+                console.log(`Isi file (${key}):`, event.target.result);
+              };
+
+              reader.onerror = function (event) {
+                console.error(
+                  `Error reading file (${key}):`,
+                  event.target.error
+                );
+              };
+
+              reader.readAsText(value); // Anda juga bisa menggunakan readAsDataURL, readAsArrayBuffer, dll.
+            } else {
+              console.log(`${key}: ${value}`);
+            }
+          });
+
+          try {
+            const response = await fetch(
+              `http://192.168.1.228:8008/api/tasks-create`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization:
+                    "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBfbmFtZSI6Imdvb2Rqb2JfbGl0ZSIsInVzZXJfaWQiOjEwMDExMTEsInBsYXRmb3JtIjoiYW5kcm9pZCIsImZjbV90b2tlbiI6ImU5dnFKWklyU2JPdmlKckYweURrTGw6QVBBOTFiSENVeTNOaWQxVnF6RGtRVFRsdlpKNlF6ck80bW41UWZIVGExSzJrT0pHVzFwcExSYmJDTUxwU2FvSkJsNHFweFNmY2FleGR0OFBmQUkwam4wUV9aYUR5cFhTWFljTDd0M3ZKUGQ2TS1kTkZtWl9sUVd4anAxcHpSYnQtQl92UW12VHBCTVIiLCJpZGVudGlmaWVyIjoiMDAwMDAxIiwiaWF0IjoxNzI1NDMyMjE1LCJleHAiOjE3MjYwMzcwMTV9.g68mwukIG-d8C3GktLcAERMtKL4lU4RFkk5TOKk62q4",
+                },
+                body: formData,
+              }
+            );
+
+            const res = await response.json();
+
+            if (res.success) {
+              alert("Data successfully submitted!");
+            } else {
+              alert("Failed to submit data.");
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            alert("An error occurred while submitting the data.");
+          }
+        });
+    </script>
+  </body>
+</html>

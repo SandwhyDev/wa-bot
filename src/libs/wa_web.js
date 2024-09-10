@@ -11,11 +11,16 @@ import { processMedia } from "./ProsesMedia";
 
 const client = new Client({
   authStrategy: new LocalAuth({
-    clientId: "client-one",
+    dataPath: "wa-login",
   }),
+  puppeteer: {
+    // headless: false  ,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  },
 });
 
 export const initializeSocket = (server) => {
+  // try {
   client.on("qr", (qr) => {
     qrcodeTerminal.generate(qr, { small: true });
     qrcode.toFile(
@@ -109,33 +114,107 @@ export const initializeSocket = (server) => {
     //     };
     //   }
 
-    socket.emit("new_message", data);
+    // socket.emit("new_message", data);
 
     const createTask = await CreateTask(data);
   });
 
   client.on("message_create", async (msg) => {
+    let group_id = msg.to.replace("@g.us", "");
+
+    if (msg.isStatus || msg.title || group_id !== "120363318345844862") {
+      return false;
+    }
+
     console.log(msg);
+
+    //   cek token
+    const token = await CekToken();
     var CekMedia;
     if (msg.hasMedia) {
       const handleMedia = await processMedia(msg);
       CekMedia = handleMedia;
     }
 
-    console.log(CekMedia);
+    const date = Math.floor(Date.now() / 1000);
+    var HashId = md5(`${group_id}-${msg.body}-${date}`);
+
+    const HashComment = md5(`${group_id}-${msg.body}-${date}`);
+
+    const data = {
+      id: msg.id.id,
+      group_id: group_id,
+      media: CekMedia ? CekMedia : null,
+      access_token: token.access_token,
+      task: {
+        unique_id: HashId,
+        title: `INQUIRY | `,
+        description: msg.body,
+        group_id: "10101010",
+      },
+    };
+
+    // console.log(data);
+
+    const createTask = await CreateTask(data);
   });
 
-  client.on("disconnected", (reason) => {
-    console.log("WhatsApp terputus, alasan:", reason);
+  // client.on("disconnected", (reason) => {
+  //   console.log("whatsapp keluar karena : ", reason);
 
-    // Reset client dan trigger ulang proses inisialisasi untuk mendapatkan QR code baru
-    client.destroy().then(() => {
-      console.log("Client destroyed. Reinitializing...");
-      client.initialize();
-    });
+  //   // Restart client untuk menghasilkan QR code baru
+  //   client.destroy().then(() => {
+  //     client.initialize();
+  //   });
+  // });
+
+  client.on("disconnected", (reason) => {
+    console.log("Client was logged out due to", reason);
+
+    // Tangkap error yang terjadi saat logout
+    try {
+      client
+        .destroy()
+        .then(() => {
+          console.log("Client destroyed, reinitializing...");
+          client.initialize();
+        })
+        .catch((err) => {
+          console.error("Error during client destruction:", err.message);
+
+          // Hapus file secara manual jika error disebabkan oleh file terkunci
+          if (err.code === "EBUSY" && err.path) {
+            const filePath = err.path;
+            console.log(
+              `Attempting to manually delete locked file: ${filePath}`
+            );
+
+            fs.unlink(filePath, (err) => {
+              if (err) {
+                console.error("Manual file deletion failed:", err.message);
+              } else {
+                console.log(
+                  "Locked file deleted successfully, reinitializing client..."
+                );
+                client.initialize();
+              }
+            });
+          }
+        });
+    } catch (e) {
+      console.error("Caught exception:", e.message);
+    }
+  });
+
+  // Listener untuk menangani uncaught exceptions dan mencegah server crash
+  process.on("uncaughtException", (err) => {
+    console.error("Uncaught Exception:", err.message);
   });
 
   client.initialize();
+  // } catch (error) {
+  //   console.log("error : ", error);
+  // }
 };
 
 export const SendOtp = async (number, otp) => {

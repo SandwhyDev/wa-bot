@@ -5,6 +5,7 @@ import env from "dotenv";
 import { initializeSocket } from "./libs/wa_web.js";
 import send_message_controllers from "./controllers/send_message_controllers.js";
 import http from "http";
+import fs from "fs";
 env.config();
 
 const app = express();

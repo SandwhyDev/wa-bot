@@ -1,4 +1,6 @@
 import { CreateComment } from "./HandleComment";
+import path from "path";
+import fs from "fs";
 
 export const ReadTask = async (unique_id) => {
   try {
@@ -35,37 +37,44 @@ export const CreateTask = async (data) => {
 
       const BuatComment = await CreateComment(data);
     } else {
-      const formData = new FormData();
-      // Tambahkan data ke formData
-      formData.append("unique_id", data.task.unique_id);
-      formData.append("title", data.task.title);
-      formData.append("description", data.task.description);
-      formData.append("group_id", data.task.group_id);
+      const form = new FormData();
+
+      // Tambahkan data ke form
+      form.append("unique_id", data.task.unique_id);
+      form.append("title", data.task.title);
+      form.append("description", data.task.description);
+      form.append("group_id", data.task.group_id);
+
       if (data.media) {
-        const filepath = path.join(__dirname, `../../public/${data.media}`);
-        formData.append("file", fs.createReadStream(filepath));
+        const filepath = path.join(__dirname, `../public/${data.media}`);
+        const stats = fs.statSync(filepath);
+        const fileSizeInBytes = stats.size;
+        const fileStream = fs.createReadStream(filepath);
+        form.append("file", fileStream);
       }
 
-      const response = await fetch(
-        `http://192.168.1.228:8008/api/tasks-create`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${data.access_token}`,
-          },
-          body: formData,
+      try {
+        const response = await fetch(
+          `http://192.168.1.228:8008/api/tasks-create`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${data.access_token}`,
+            },
+            body: form,
+          }
+        );
+
+        const res = await response.json();
+        console.log("result task: ", res);
+
+        if (res.success) {
+          return true;
+        } else {
+          return false;
         }
-      );
-
-      const res = await response.json();
-
-      console.log("result task : ", res);
-
-      if (res.success) {
-        const BuatComment = await CreateComment(data);
-
-        return true;
-      } else {
+      } catch (error) {
+        console.error("Error sending data to server: ", error);
         return false;
       }
     }
